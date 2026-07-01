@@ -318,7 +318,10 @@
 </div>
 
 <div id="view-record" class="view active">
-  <div class="today-label" id="today-date"></div>
+  <div class="card" style="padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <div style="font-size:0.82rem; color:var(--text-light); font-weight:600;">記録日</div>
+    <input type="date" id="record-date" style="width:auto; font-size:0.95rem;" onchange="onDateChange()">
+  </div>
   <div class="banner" id="notif-banner">
     <span>毎日22時にリマインダーを送れます</span>
     <button onclick="requestNotifPermission()">通知を許可</button>
@@ -506,6 +509,7 @@ let savedImages   = [];
 
 // ===== Boot =====
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('record-date').value = todayStr();
   setTodayLabel();
   updateMood();
   loadLocal();
@@ -529,9 +533,16 @@ function showView(name, btn) {
 }
 
 function setTodayLabel() {
-  const d = new Date();
-  document.getElementById('today-date').textContent =
-    `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${WEEKDAYS[d.getDay()]}）`;
+  // today-date要素は削除済みのためmax属性だけ設定
+  document.getElementById('record-date').max = todayStr();
+}
+
+function selectedDate() {
+  return document.getElementById('record-date').value || todayStr();
+}
+
+function onDateChange() {
+  checkTodayRecord();
 }
 
 function showStatus(msg, type) {
@@ -558,13 +569,13 @@ function addActivity() {
   el.value = '';
   renderActivityTags();
 }
-function removeActivity(name) {
-  activities = activities.filter(a => a !== name);
+function removeActivity(idx) {
+  activities.splice(idx, 1);
   renderActivityTags();
 }
 function renderActivityTags() {
   document.getElementById('activity-tags').innerHTML =
-    activities.map(a => `<span class="tag">${escHtml(a)}<button onclick="removeActivity(${JSON.stringify(a)})">×</button></span>`).join('');
+    activities.map((a, i) => `<span class="tag">${escHtml(a)}<button onclick="removeActivity(${i})">×</button></span>`).join('');
 }
 
 // ===== Image handling =====
@@ -652,13 +663,16 @@ function closeModal() {
   document.getElementById('modal-img').src = '';
 }
 
-// ===== Today record check =====
+// ===== Record check for selected date =====
 function checkTodayRecord() {
-  const today = todayStr();
-  const existing = records.find(r => r.date === today);
+  const date = selectedDate();
+  const existing = records.find(r => r.date === date);
   const badge = document.getElementById('already-badge');
+  const saveBtn = document.getElementById('save-btn');
+
   if (existing) {
     badge.style.display = 'block';
+    badge.textContent = `${date} の記録があります。内容を変更して保存すると上書きされます。`;
     document.getElementById('mood').value = existing.mood;
     updateMood();
     document.getElementById('sleep-start').value = existing.sleep_start || '00:30';
@@ -671,11 +685,19 @@ function checkTodayRecord() {
     savedImages = [...(existing.images || [])];
     pendingImages = [];
     renderImagePreviews();
+    saveBtn.textContent = '更新する';
   } else {
     badge.style.display = 'none';
-    savedImages = [];
-    pendingImages = [];
+    document.getElementById('mood').value = 7; updateMood();
+    document.getElementById('sleep-start').value = '00:30';
+    document.getElementById('sleep-end').value = '08:00';
+    document.getElementById('sleep-quality').value = '普通';
+    activities = []; renderActivityTags();
+    document.getElementById('notes').value = '';
+    document.getElementById('concerns').value = '';
+    savedImages = []; pendingImages = [];
     renderImagePreviews();
+    saveBtn.textContent = '記録する';
   }
 }
 
@@ -714,7 +736,7 @@ async function saveRecord() {
     newImagePaths = pendingImages.map(img => img.dataUrl);
   }
 
-  const today = todayStr();
+  const today = selectedDate();
   const allImages = [...savedImages, ...newImagePaths];
   const record = {
     id: today,
@@ -739,7 +761,10 @@ async function saveRecord() {
   savedImages = allImages;
   pendingImages = [];
   renderImagePreviews();
-  document.getElementById('already-badge').style.display = 'block';
+  const badge = document.getElementById('already-badge');
+  badge.style.display = 'block';
+  badge.textContent = `${today} の記録があります。内容を変更して保存すると上書きされます。`;
+  document.getElementById('save-btn').textContent = '更新する';
 
   btn.innerHTML = '<span class="spinner"></span>記録を同期中…';
 
@@ -903,7 +928,11 @@ function renderHistory() {
     return `<div class="history-item" onclick="toggleDetail(${i})">
       <div class="history-header">
         <div class="history-date">${dateStr}</div>
-        <div class="history-mood">${r.mood}<span>/10</span></div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn-secondary" style="padding:5px 11px;font-size:0.78rem;"
+            onclick="event.stopPropagation();editRecord('${r.date}')">編集</button>
+          <div class="history-mood">${r.mood}<span>/10</span></div>
+        </div>
       </div>
       <div class="history-preview">${escHtml(preview.substring(0,40))}${preview.length>40?'…':''}</div>
       <div class="history-detail" id="hd-${i}">
@@ -931,6 +960,13 @@ function renderHistory() {
 
 function toggleDetail(i) {
   document.getElementById('hd-' + i).classList.toggle('open');
+}
+
+function editRecord(date) {
+  document.getElementById('record-date').value = date;
+  onDateChange();
+  showView('record', document.querySelector('nav button:first-child'));
+  window.scrollTo(0, 0);
 }
 
 // ===== Export =====
