@@ -6,14 +6,12 @@
     "sleep_start": "00:30",
     "sleep_end": "08:00",
     "sleep_quality": "普通",
-    "activities": [
-      "Feelcycle"
-    ],
+    "activities": [],
     "notes": "",
     "concerns": "",
     "images": [
       "images/2026-07-01-1782895494038.jpg"
     ],
-    "saved_at": "2026-07-01T08:52:50.477Z"
+    "saved_at": "2026-07-01T08:54:30.203Z"
   }
 ]
