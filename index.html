@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>こころの記録</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7aa89a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="こころの記録">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #7aa89a;
+      --primary-light: #e8f2ef;
+      --bg: #f7f5f2;
+      --card: #ffffff;
+      --text: #2d3436;
+      --text-light: #636e72;
+      --border: #e0ddd8;
+      --shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 16px 20px;
+      text-align: center;
+      font-size: 1.05rem;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: white;
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    nav button {
+      flex: 1; border: none; background: none;
+      padding: 12px 8px; font-size: 0.7rem;
+      color: var(--text-light); cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      transition: color 0.2s; font-family: inherit;
+    }
+    nav button.active { color: var(--primary); }
+    nav button svg { width: 22px; height: 22px; }
+
+    .view { display: none; padding: 16px; }
+    .view.active { display: block; }
+
+    .card {
+      background: var(--card); border-radius: 16px;
+      padding: 20px; margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-title {
+      font-size: 0.8rem; color: var(--text-light);
+      margin-bottom: 14px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
+    /* Mood */
+    .mood-display { text-align: center; margin-bottom: 10px; }
+    .mood-score { font-size: 3.5rem; font-weight: 700; color: var(--primary); line-height: 1; }
+    .mood-label { font-size: 0.9rem; color: var(--text-light); margin-top: 4px; }
+
+    input[type="range"] {
+      width: 100%; height: 6px; -webkit-appearance: none;
+      background: var(--primary-light); border-radius: 3px; outline: none; margin: 10px 0;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 26px; height: 26px;
+      border-radius: 50%; background: var(--primary); cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .range-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-light); }
+
+    /* Fields */
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    .field label { display: block; font-size: 0.82rem; color: var(--text-light); margin-bottom: 6px; font-weight: 500; }
+
+    input[type="text"], input[type="number"], input[type="time"], input[type="password"], select, textarea {
+      width: 100%; padding: 11px 13px;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: 1rem; font-family: inherit;
+      background: var(--bg); color: var(--text);
+      outline: none; transition: border-color 0.2s; -webkit-appearance: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+    textarea { resize: vertical; min-height: 75px; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Tags */
+    .tag-row { display: flex; gap: 8px; }
+    .tag-row input { flex: 1; }
+    .tag-row button {
+      padding: 0 16px; background: var(--primary); color: white;
+      border: none; border-radius: 10px; cursor: pointer;
+      font-size: 1.2rem; line-height: 1; min-width: 44px;
+    }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .tag {
+      background: var(--primary-light); color: var(--primary);
+      padding: 5px 10px 5px 12px; border-radius: 20px; font-size: 0.85rem;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .tag button { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 1rem; padding: 0; line-height: 1; }
+
+    /* Buttons */
+    .btn-primary {
+      width: 100%; padding: 15px; background: var(--primary); color: white;
+      border: none; border-radius: 12px; font-size: 1rem; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: opacity 0.15s;
+    }
+    .btn-primary:active { opacity: 0.8; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-secondary {
+      padding: 9px 16px; background: var(--primary-light); color: var(--primary);
+      border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600;
+      font-family: inherit; cursor: pointer; white-space: nowrap;
+    }
+    .btn-secondary:active { opacity: 0.8; }
+
+    /* Status */
+    .status {
+      text-align: center; padding: 11px; border-radius: 10px;
+      margin-bottom: 14px; font-size: 0.88rem; display: none;
+    }
+    .status.success { background: #d4edda; color: #155724; display: block; }
+    .status.error   { background: #f8d7da; color: #721c24; display: block; }
+    .status.info    { background: #d1ecf1; color: #0c5460; display: block; }
+
+    /* Date label */
+    .today-label { text-align: center; font-size: 0.88rem; color: var(--text-light); margin-bottom: 14px; }
+
+    /* Banner */
+    .banner {
+      background: #fff8e1; border: 1.5px solid #ffe082;
+      border-radius: 12px; padding: 12px 14px;
+      margin-bottom: 14px; font-size: 0.85rem;
+      display: none; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .banner.visible { display: flex; }
+    .banner button {
+      background: #ffd54f; border: none; border-radius: 7px;
+      padding: 7px 12px; font-size: 0.83rem; cursor: pointer; white-space: nowrap;
+      font-family: inherit; font-weight: 600;
+    }
+
+    /* History */
+    .history-item {
+      background: white; border-radius: 12px; padding: 15px;
+      margin-bottom: 10px; box-shadow: var(--shadow); cursor: pointer;
+    }
+    .history-header { display: flex; justify-content: space-between; align-items: center; }
+    .history-date { font-weight: 600; font-size: 0.95rem; }
+    .history-mood { font-size: 1.6rem; font-weight: 700; color: var(--primary); }
+    .history-mood span { font-size: 0.85rem; color: var(--text-light); font-weight: 400; }
+    .history-preview { font-size: 0.82rem; color: var(--text-light); margin-top: 5px; }
+
+    .history-detail {
+      display: none; margin-top: 12px; padding-top: 12px;
+      border-top: 1px solid var(--border); font-size: 0.88rem;
+    }
+    .history-detail.open { display: block; }
+    .detail-row { margin-bottom: 8px; }
+    .detail-row:last-child { margin-bottom: 0; }
+    .detail-label { font-size: 0.75rem; color: var(--text-light); margin-bottom: 2px; font-weight: 600; }
+
+    /* Settings */
+    .setting-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 0; border-bottom: 1px solid var(--border); gap: 12px;
+    }
+    .setting-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .setting-row:first-child { padding-top: 0; }
+    .setting-label { font-weight: 500; font-size: 0.95rem; }
+    .setting-desc { font-size: 0.78rem; color: var(--text-light); margin-top: 2px; }
+
+    .sync-note { font-size: 0.78rem; color: var(--text-light); margin-top: 6px; text-align: center; }
+    .sync-note.ok { color: #27ae60; }
+    .sync-note.error { color: #e74c3c; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block; width: 15px; height: 15px;
+      border: 2px solid rgba(255,255,255,0.35); border-top-color: white;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty state */
+    .empty {
+      text-align: center; padding: 40px 20px; color: var(--text-light);
+    }
+    .empty svg { width: 56px; height: 56px; margin-bottom: 14px; opacity: 0.35; }
+    .empty p { font-size: 0.9rem; }
+
+    /* Already recorded */
+    .already-badge {
+      background: var(--primary-light); color: var(--primary);
+      border-radius: 8px; padding: 10px 14px; font-size: 0.85rem;
+      margin-bottom: 14px; text-align: center; display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header id="header-title">こころの記録</header>
+
+<div id="view-record" class="view active">
+  <div class="today-label" id="today-date"></div>
+  <div class="banner" id="notif-banner">
+    <span>毎日22時にリマインダーを送れます</span>
+    <button onclick="requestNotifPermission()">通知を許可</button>
+  </div>
+  <div class="already-badge" id="already-badge">今日はすでに記録があります。上書きして保存できます。</div>
+  <div class="status" id="status-msg"></div>
+
+  <div class="card">
+    <div class="card-title">今日の気分</div>
+    <div class="mood-display">
+      <div class="mood-score" id="mood-display">7</div>
+      <div class="mood-label" id="mood-label">まあまあ良い</div>
+    </div>
+    <input type="range" id="mood" min="1" max="10" value="7" oninput="updateMood()">
+    <div class="range-labels"><span>最悪</span><span>最高</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">睡眠</div>
+    <div class="two-col">
+      <div class="field">
+        <label>就寝</label>
+        <input type="time" id="sleep-start" value="00:30">
+      </div>
+      <div class="field">
+        <label>起床</label>
+        <input type="time" id="sleep-end" value="08:00">
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px">
+      <label>眠りの質</label>
+      <select id="sleep-quality">
+        <option>とても良い</option>
+        <option>良い</option>
+        <option selected>普通</option>
+        <option>悪い</option>
+        <option>とても悪い</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">今日やったこと</div>
+    <div class="tag-row">
+      <input type="text" id="activity-input" placeholder="例：Feelcycle、散歩、料理…"
+        onkeydown="if(event.key==='Enter'){addActivity();event.preventDefault()}">
+      <button onclick="addActivity()">＋</button>
+    </div>
+    <div class="tags" id="activity-tags"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">今日のメモ</div>
+    <div class="field">
+      <label>今日の一言・出来事</label>
+      <textarea id="notes" placeholder="今日感じたこと、良かったこと、食べたものなど…"></textarea>
+    </div>
+    <div class="field">
+      <label>頭にあること・心配事</label>
+      <textarea id="concerns" placeholder="気になっていること、不安なことなど…"></textarea>
+    </div>
+  </div>
+
+  <button class="btn-primary" id="save-btn" onclick="saveRecord()">記録する</button>
+</div>
+
+<div id="view-history" class="view">
+  <div class="sync-note" id="history-sync-note"></div>
+  <div id="history-list"></div>
+</div>
+
+<div id="view-settings" class="view">
+  <div class="card">
+    <div class="card-title">通知設定</div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">リマインダー時刻</div>
+        <div class="setting-desc">毎日この時刻に通知します</div>
+      </div>
+      <input type="time" id="notif-time" value="22:00" style="width:auto" onchange="saveNotifTime()">
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">テスト通知を送る</div>
+        <div class="setting-desc">今すぐ通知が届くか確認</div>
+      </div>
+      <button class="btn-secondary" onclick="testNotif()">送る</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">GitHub 同期</div>
+    <p style="font-size:0.83rem; color:var(--text-light); margin-bottom:14px; line-height:1.6">
+      GitHubにデータを保存すると、スマホ・PCどちらからでも同じ記録を使えます。<br>
+      Personal Access Tokenを入力して接続してください。
+    </p>
+    <div class="field">
+      <label>Personal Access Token</label>
+      <input type="password" id="github-token" placeholder="ghp_xxxxxxxxxxxx">
+    </div>
+    <button class="btn-primary" onclick="connectGitHub()" style="margin-top:4px">接続する</button>
+    <div class="sync-note" id="token-status"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">データ管理</div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">GitHubから同期</div>
+        <div class="setting-desc">他デバイスの記録を取り込む</div>
+      </div>
+      <button class="btn-secondary" onclick="pullFromGitHub()">同期</button>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">JSONで書き出す</div>
+        <div class="setting-desc">Claude Codeでの分析に使えます</div>
+      </div>
+      <button class="btn-secondary" onclick="exportJSON()">書き出す</button>
+    </div>
+  </div>
+</div>
+
+<nav>
+  <button class="active" onclick="showView('record',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/>
+      <path d="M17.5 3.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 8.5-8.5z"/>
+    </svg>
+    記録
+  </button>
+  <button onclick="showView('history',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    履歴
+  </button>
+  <button onclick="showView('settings',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+    </svg>
+    設定
+  </button>
+</nav>
+
+<script>
+// ===== Config =====
+const GH_OWNER = 'mcorapazure-cloud';
+const GH_REPO  = 'mental-tracker';
+const GH_FILE  = 'records.json';
+const GH_API   = 'https://api.github.com';
+
+const MOOD_LABELS = {
+  1:'最悪', 2:'とても悪い', 3:'悪い', 4:'やや悪い', 5:'普通',
+  6:'まあまあ', 7:'まあまあ良い', 8:'良い', 9:'とても良い', 10:'最高！'
+};
+const WEEKDAYS = '日月火水木金土';
+
+// ===== State =====
+let records = [];
+let activities = [];
+let ghFileSha = null;
+
+// ===== Boot =====
+document.addEventListener('DOMContentLoaded', () => {
+  setTodayLabel();
+  updateMood();
+  loadLocal();
+  checkTodayRecord();
+  initNotifTime();
+  checkNotifBanner();
+  loadTokenDisplay();
+  scheduleDailyNotif();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+});
+
+// ===== UI Helpers =====
+function showView(name, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'history') renderHistory();
+}
+
+function setTodayLabel() {
+  const d = new Date();
+  document.getElementById('today-date').textContent =
+    `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${WEEKDAYS[d.getDay()]}）`;
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = 'status'; }, 4000);
+}
+
+// ===== Mood =====
+function updateMood() {
+  const v = document.getElementById('mood').value;
+  document.getElementById('mood-display').textContent = v;
+  document.getElementById('mood-label').textContent = MOOD_LABELS[v];
+}
+
+// ===== Activities =====
+function addActivity() {
+  const el = document.getElementById('activity-input');
+  const v = el.value.trim();
+  if (!v || activities.includes(v)) { el.value = ''; return; }
+  activities.push(v);
+  el.value = '';
+  renderActivityTags();
+}
+function removeActivity(name) {
+  activities = activities.filter(a => a !== name);
+  renderActivityTags();
+}
+function renderActivityTags() {
+  document.getElementById('activity-tags').innerHTML =
+    activities.map(a => `<span class="tag">${a}<button onclick="removeActivity(${JSON.stringify(a)})">×</button></span>`).join('');
+}
+
+// ===== Today record check =====
+function checkTodayRecord() {
+  const today = todayStr();
+  const existing = records.find(r => r.date === today);
+  const badge = document.getElementById('already-badge');
+  if (existing) {
+    badge.style.display = 'block';
+    // Pre-fill form
+    document.getElementById('mood').value = existing.mood;
+    updateMood();
+    document.getElementById('sleep-start').value = existing.sleep_start || '00:30';
+    document.getElementById('sleep-end').value = existing.sleep_end || '08:00';
+    document.getElementById('sleep-quality').value = existing.sleep_quality || '普通';
+    activities = [...(existing.activities || [])];
+    renderActivityTags();
+    document.getElementById('notes').value = existing.notes || '';
+    document.getElementById('concerns').value = existing.concerns || '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ===== Save Record =====
+async function saveRecord() {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>保存中…';
+
+  const today = todayStr();
+  const record = {
+    id: today,
+    date: today,
+    mood: parseInt(document.getElementById('mood').value),
+    sleep_start: document.getElementById('sleep-start').value,
+    sleep_end: document.getElementById('sleep-end').value,
+    sleep_quality: document.getElementById('sleep-quality').value,
+    activities: [...activities],
+    notes: document.getElementById('notes').value.trim(),
+    concerns: document.getElementById('concerns').value.trim(),
+    saved_at: new Date().toISOString()
+  };
+
+  const idx = records.findIndex(r => r.date === today);
+  if (idx >= 0) records[idx] = record;
+  else records.push(record);
+  records.sort((a, b) => b.date.localeCompare(a.date));
+  saveLocal();
+  document.getElementById('already-badge').style.display = 'block';
+
+  const token = getToken();
+  if (token) {
+    const ok = await pushGitHub(token);
+    showStatus(ok ? '記録しました（GitHubに同期済み）' : '記録しました（GitHub同期に失敗しました）', ok ? 'success' : 'error');
+  } else {
+    showStatus('記録しました（このデバイスに保存）', 'success');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '記録する';
+  scheduleDailyNotif();
+}
+
+// ===== LocalStorage =====
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function saveLocal() { localStorage.setItem('records_v1', JSON.stringify(records)); }
+function loadLocal() {
+  try { records = JSON.parse(localStorage.getItem('records_v1') || '[]'); } catch { records = []; }
+}
+function getToken() { return localStorage.getItem('gh_token') || ''; }
+
+// ===== GitHub API =====
+async function ghGet(token) {
+  const res = await fetch(`${GH_API}/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`, {
+    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error('GitHub取得エラー: ' + res.status);
+  const data = await res.json();
+  ghFileSha = data.sha;
+  return JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g,'')))));
+}
+
+async function ghPut(token, content) {
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2))));
+  const body = {
+    message: `記録更新 ${todayStr()}`,
+    content: encoded,
+    ...(ghFileSha && { sha: ghFileSha })
+  };
+  const res = await fetch(`${GH_API}/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `token ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/vnd.github.v3+json'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.message || res.status); }
+  const result = await res.json();
+  ghFileSha = result.content.sha;
+}
+
+function mergeRecords(local, remote) {
+  const map = {};
+  [...remote, ...local].forEach(r => {
+    if (!map[r.id] || (r.saved_at || '') > (map[r.id].saved_at || '')) map[r.id] = r;
+  });
+  return Object.values(map).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+async function pushGitHub(token) {
+  try {
+    const remote = await ghGet(token);
+    if (remote) { records = mergeRecords(records, remote); saveLocal(); }
+    await ghPut(token, records);
+    return true;
+  } catch(e) {
+    console.error('GitHub push failed:', e);
+    return false;
+  }
+}
+
+async function pullFromGitHub() {
+  const token = getToken();
+  if (!token) { alert('設定でGitHubトークンを入力してください'); return; }
+  const note = document.getElementById('history-sync-note');
+  note.textContent = '同期中…'; note.className = 'sync-note';
+  try {
+    const remote = await ghGet(token);
+    if (remote) {
+      records = mergeRecords(records, remote);
+      saveLocal();
+      note.textContent = `同期完了 — ${records.length}件`;
+      note.className = 'sync-note ok';
+      renderHistory();
+    } else {
+      note.textContent = 'GitHubにデータがありません（初回は記録してから同期してください）';
+    }
+  } catch(e) {
+    note.textContent = '同期失敗: ' + e.message;
+    note.className = 'sync-note error';
+  }
+}
+
+// ===== Connect GitHub =====
+async function connectGitHub() {
+  const token = document.getElementById('github-token').value.trim();
+  if (!token) { alert('トークンを入力してください'); return; }
+  const status = document.getElementById('token-status');
+  status.textContent = '確認中…'; status.className = 'sync-note';
+  try {
+    const res = await fetch(`${GH_API}/repos/${GH_OWNER}/${GH_REPO}`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!res.ok) throw new Error('認証失敗 (status ' + res.status + ')');
+    localStorage.setItem('gh_token', token);
+    status.textContent = '接続成功！'; status.className = 'sync-note ok';
+    // Pull latest data
+    const remote = await ghGet(token);
+    if (remote) { records = mergeRecords(records, remote); saveLocal(); checkTodayRecord(); }
+  } catch(e) {
+    status.textContent = '接続失敗：' + e.message; status.className = 'sync-note error';
+  }
+}
+
+function loadTokenDisplay() {
+  const t = getToken();
+  if (t) {
+    document.getElementById('github-token').value = t;
+    document.getElementById('token-status').textContent = '接続済み';
+    document.getElementById('token-status').className = 'sync-note ok';
+  }
+}
+
+// ===== History =====
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!records.length) {
+    list.innerHTML = `<div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      <p>まだ記録がありません</p>
+    </div>`;
+    return;
+  }
+  list.innerHTML = records.map((r, i) => {
+    const d = new Date(r.date + 'T12:00:00');
+    const dateStr = `${d.getMonth()+1}月${d.getDate()}日（${WEEKDAYS[d.getDay()]}）`;
+    const preview = (r.activities||[]).join('・') || r.notes || '記録あり';
+    return `<div class="history-item" onclick="toggleDetail(${i})">
+      <div class="history-header">
+        <div class="history-date">${dateStr}</div>
+        <div class="history-mood">${r.mood}<span>/10</span></div>
+      </div>
+      <div class="history-preview">${preview.substring(0,40)}${preview.length>40?'…':''}</div>
+      <div class="history-detail" id="hd-${i}">
+        <div class="detail-row">
+          <div class="detail-label">睡眠</div>
+          <div>${r.sleep_start}〜${r.sleep_end}（${r.sleep_quality}）</div>
+        </div>
+        ${(r.activities||[]).length ? `<div class="detail-row">
+          <div class="detail-label">やったこと</div>
+          <div>${r.activities.join('、')}</div>
+        </div>` : ''}
+        ${r.notes ? `<div class="detail-row">
+          <div class="detail-label">メモ</div>
+          <div>${r.notes}</div>
+        </div>` : ''}
+        ${r.concerns ? `<div class="detail-row">
+          <div class="detail-label">気になること</div>
+          <div>${r.concerns}</div>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDetail(i) {
+  document.getElementById('hd-' + i).classList.toggle('open');
+}
+
+// ===== Export =====
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `mental-records-${todayStr()}.json`;
+  a.click();
+}
+
+// ===== Notifications =====
+function checkNotifBanner() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    document.getElementById('notif-banner').classList.add('visible');
+  }
+}
+
+async function requestNotifPermission() {
+  const r = await Notification.requestPermission();
+  if (r === 'granted') {
+    document.getElementById('notif-banner').classList.remove('visible');
+    scheduleDailyNotif();
+    showStatus('通知を有効にしました', 'success');
+  }
+}
+
+function initNotifTime() {
+  const t = localStorage.getItem('notif_time');
+  if (t) document.getElementById('notif-time').value = t;
+}
+
+function saveNotifTime() {
+  localStorage.setItem('notif_time', document.getElementById('notif-time').value);
+  scheduleDailyNotif();
+}
+
+function scheduleDailyNotif() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const [h, m] = (localStorage.getItem('notif_time') || '22:00').split(':').map(Number);
+  const now = new Date();
+  const next = new Date(); next.setHours(h, m, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  clearTimeout(window._notifTimer);
+  window._notifTimer = setTimeout(() => {
+    new Notification('こころの記録', { body: '今日の記録をつけましょう', icon: 'icon.svg' });
+    scheduleDailyNotif();
+  }, next - now);
+}
+
+function testNotif() {
+  if (!('Notification' in window)) { alert('このブラウザは通知に対応していません'); return; }
+  if (Notification.permission !== 'granted') { requestNotifPermission(); return; }
+  new Notification('こころの記録', { body: 'テスト通知です。正常に動作しています', icon: 'icon.svg' });
+}
+</script>
+</body>
+</html>
