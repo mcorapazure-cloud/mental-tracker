@@ -128,6 +128,81 @@
     }
     .tag button { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 1rem; padding: 0; line-height: 1; }
 
+    /* Image upload */
+    .img-upload-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 11px 16px; border: 1.5px dashed var(--border);
+      border-radius: 10px; background: var(--bg);
+      color: var(--text-light); cursor: pointer;
+      font-size: 0.9rem; font-family: inherit;
+      transition: border-color 0.2s, color 0.2s;
+      width: 100%;
+    }
+    .img-upload-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .img-upload-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+    .img-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .img-item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--border);
+    }
+
+    .img-item img {
+      width: 100%; height: 100%;
+      object-fit: cover; cursor: pointer;
+    }
+
+    .img-remove {
+      position: absolute; top: 4px; right: 4px;
+      width: 22px; height: 22px;
+      background: rgba(0,0,0,0.55); color: white;
+      border: none; border-radius: 50%; cursor: pointer;
+      font-size: 0.8rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .img-uploading {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* History thumbnails */
+    .hist-imgs {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;
+    }
+    .hist-img {
+      width: 56px; height: 56px; border-radius: 8px;
+      object-fit: cover; cursor: pointer;
+      border: 1.5px solid var(--border);
+    }
+
+    /* Fullscreen image modal */
+    .img-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.92); z-index: 500;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .img-modal.open { display: flex; }
+    .img-modal img { max-width: 100%; max-height: 90vh; border-radius: 8px; object-fit: contain; }
+    .img-modal-close {
+      position: absolute; top: 16px; right: 16px;
+      width: 36px; height: 36px;
+      background: rgba(255,255,255,0.2); color: white;
+      border: none; border-radius: 50%; font-size: 1.2rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
     /* Buttons */
     .btn-primary {
       width: 100%; padding: 15px; background: var(--primary); color: white;
@@ -211,6 +286,11 @@
       border-radius: 50%; animation: spin 0.8s linear infinite;
       vertical-align: middle; margin-right: 6px;
     }
+    .spinner-dark {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(122,168,154,0.3); border-top-color: var(--primary);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Empty state */
@@ -220,7 +300,6 @@
     .empty svg { width: 56px; height: 56px; margin-bottom: 14px; opacity: 0.35; }
     .empty p { font-size: 0.9rem; }
 
-    /* Already recorded */
     .already-badge {
       background: var(--primary-light); color: var(--primary);
       border-radius: 8px; padding: 10px 14px; font-size: 0.85rem;
@@ -230,7 +309,13 @@
 </head>
 <body>
 
-<header id="header-title">こころの記録</header>
+<header>こころの記録</header>
+
+<!-- Fullscreen image viewer -->
+<div class="img-modal" id="img-modal" onclick="closeModal()">
+  <button class="img-modal-close" onclick="closeModal()">✕</button>
+  <img id="modal-img" src="" alt="">
+</div>
 
 <div id="view-record" class="view active">
   <div class="today-label" id="today-date"></div>
@@ -297,6 +382,19 @@
     </div>
   </div>
 
+  <div class="card">
+    <div class="card-title">写真</div>
+    <input type="file" id="img-input" accept="image/*" multiple style="display:none" onchange="handleImageSelect(event)">
+    <button class="img-upload-btn" onclick="document.getElementById('img-input').click()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
+      </svg>
+      写真を追加（複数可）
+    </button>
+    <div class="img-grid" id="img-preview-grid"></div>
+  </div>
+
   <button class="btn-primary" id="save-btn" onclick="saveRecord()">記録する</button>
 </div>
 
@@ -327,8 +425,7 @@
   <div class="card">
     <div class="card-title">GitHub 同期</div>
     <p style="font-size:0.83rem; color:var(--text-light); margin-bottom:14px; line-height:1.6">
-      GitHubにデータを保存すると、スマホ・PCどちらからでも同じ記録を使えます。<br>
-      Personal Access Tokenを入力して接続してください。
+      GitHubにデータ・写真を保存すると、スマホ・PCどちらからでも利用できます。
     </p>
     <div class="field">
       <label>Personal Access Token</label>
@@ -389,6 +486,7 @@ const GH_OWNER = 'mcorapazure-cloud';
 const GH_REPO  = 'mental-tracker';
 const GH_FILE  = 'records.json';
 const GH_API   = 'https://api.github.com';
+const RAW_BASE = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/main/`;
 
 const MOOD_LABELS = {
   1:'最悪', 2:'とても悪い', 3:'悪い', 4:'やや悪い', 5:'普通',
@@ -400,6 +498,11 @@ const WEEKDAYS = '日月火水木金土';
 let records = [];
 let activities = [];
 let ghFileSha = null;
+
+// pendingImages: {dataUrl, filename} — 選択済みで未アップロードの画像
+// savedImages: string[] — 保存済み画像のパス or dataUrl
+let pendingImages = [];
+let savedImages   = [];
 
 // ===== Boot =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -416,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// ===== UI Helpers =====
+// ===== UI =====
 function showView(name, btn) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
@@ -436,7 +539,7 @@ function showStatus(msg, type) {
   el.textContent = msg;
   el.className = 'status ' + type;
   clearTimeout(el._t);
-  el._t = setTimeout(() => { el.className = 'status'; }, 4000);
+  el._t = setTimeout(() => { el.className = 'status'; }, 5000);
 }
 
 // ===== Mood =====
@@ -461,7 +564,92 @@ function removeActivity(name) {
 }
 function renderActivityTags() {
   document.getElementById('activity-tags').innerHTML =
-    activities.map(a => `<span class="tag">${a}<button onclick="removeActivity(${JSON.stringify(a)})">×</button></span>`).join('');
+    activities.map(a => `<span class="tag">${escHtml(a)}<button onclick="removeActivity(${JSON.stringify(a)})">×</button></span>`).join('');
+}
+
+// ===== Image handling =====
+async function handleImageSelect(event) {
+  const files = Array.from(event.target.files);
+  event.target.value = '';
+  for (const file of files) {
+    const dataUrl = await processImage(file);
+    const filename = `${todayStr()}-${Date.now()}.jpg`;
+    pendingImages.push({ dataUrl, filename });
+  }
+  renderImagePreviews();
+}
+
+async function processImage(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1200;
+        let w = img.width, h = img.height;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        // canvas.toDataURL strips all EXIF (including GPS)
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function removePendingImage(idx) {
+  pendingImages.splice(idx, 1);
+  renderImagePreviews();
+}
+
+function removeSavedImage(idx) {
+  savedImages.splice(idx, 1);
+  renderImagePreviews();
+}
+
+function renderImagePreviews() {
+  const grid = document.getElementById('img-preview-grid');
+  const allItems = [
+    ...savedImages.map((src, i) => ({ src: imgSrc(src), removeFn: `removeSavedImage(${i})`, saved: true })),
+    ...pendingImages.map((img, i) => ({ src: img.dataUrl, removeFn: `removePendingImage(${i})`, saved: false }))
+  ];
+  if (!allItems.length) { grid.innerHTML = ''; return; }
+  grid.innerHTML = allItems.map(item => `
+    <div class="img-item">
+      <img src="${item.src}" onclick="openImage('${item.src}')" loading="lazy">
+      <button class="img-remove" onclick="${item.removeFn}">✕</button>
+    </div>
+  `).join('');
+}
+
+function imgSrc(src) {
+  // If it's a path like "images/xxx.jpg", resolve to raw GitHub URL
+  if (src.startsWith('data:')) return src;
+  return RAW_BASE + src;
+}
+
+async function uploadPendingImages(token) {
+  const paths = [];
+  for (const img of pendingImages) {
+    const path = `images/${img.filename}`;
+    await ghPutFile(token, path, img.dataUrl.split(',')[1]);
+    paths.push(path);
+  }
+  return paths;
+}
+
+// ===== Image modal =====
+function openImage(src) {
+  document.getElementById('modal-img').src = src;
+  document.getElementById('img-modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('img-modal').classList.remove('open');
+  document.getElementById('modal-img').src = '';
 }
 
 // ===== Today record check =====
@@ -471,7 +659,6 @@ function checkTodayRecord() {
   const badge = document.getElementById('already-badge');
   if (existing) {
     badge.style.display = 'block';
-    // Pre-fill form
     document.getElementById('mood').value = existing.mood;
     updateMood();
     document.getElementById('sleep-start').value = existing.sleep_start || '00:30';
@@ -481,8 +668,14 @@ function checkTodayRecord() {
     renderActivityTags();
     document.getElementById('notes').value = existing.notes || '';
     document.getElementById('concerns').value = existing.concerns || '';
+    savedImages = [...(existing.images || [])];
+    pendingImages = [];
+    renderImagePreviews();
   } else {
     badge.style.display = 'none';
+    savedImages = [];
+    pendingImages = [];
+    renderImagePreviews();
   }
 }
 
@@ -490,9 +683,39 @@ function checkTodayRecord() {
 async function saveRecord() {
   const btn = document.getElementById('save-btn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>保存中…';
+
+  const token = getToken();
+  const hasPending = pendingImages.length > 0;
+
+  if (hasPending && !token) {
+    btn.innerHTML = '<span class="spinner"></span>保存中…';
+  } else if (hasPending) {
+    btn.innerHTML = `<span class="spinner"></span>写真をアップロード中… (0/${pendingImages.length})`;
+  } else {
+    btn.innerHTML = '<span class="spinner"></span>保存中…';
+  }
+
+  let newImagePaths = [];
+  if (hasPending && token) {
+    try {
+      for (let i = 0; i < pendingImages.length; i++) {
+        btn.innerHTML = `<span class="spinner"></span>写真をアップロード中… (${i+1}/${pendingImages.length})`;
+        const path = `images/${pendingImages[i].filename}`;
+        await ghPutFile(token, path, pendingImages[i].dataUrl.split(',')[1]);
+        newImagePaths.push(path);
+      }
+    } catch(e) {
+      showStatus('写真のアップロードに失敗しました: ' + e.message, 'error');
+      btn.disabled = false; btn.textContent = '記録する';
+      return;
+    }
+  } else if (hasPending && !token) {
+    // GitHubなしの場合は小さいサイズのdataUrlをローカル保存
+    newImagePaths = pendingImages.map(img => img.dataUrl);
+  }
 
   const today = todayStr();
+  const allImages = [...savedImages, ...newImagePaths];
   const record = {
     id: today,
     date: today,
@@ -503,6 +726,7 @@ async function saveRecord() {
     activities: [...activities],
     notes: document.getElementById('notes').value.trim(),
     concerns: document.getElementById('concerns').value.trim(),
+    images: allImages,
     saved_at: new Date().toISOString()
   };
 
@@ -511,9 +735,14 @@ async function saveRecord() {
   else records.push(record);
   records.sort((a, b) => b.date.localeCompare(a.date));
   saveLocal();
+
+  savedImages = allImages;
+  pendingImages = [];
+  renderImagePreviews();
   document.getElementById('already-badge').style.display = 'block';
 
-  const token = getToken();
+  btn.innerHTML = '<span class="spinner"></span>記録を同期中…';
+
   if (token) {
     const ok = await pushGitHub(token);
     showStatus(ok ? '記録しました（GitHubに同期済み）' : '記録しました（GitHub同期に失敗しました）', ok ? 'success' : 'error');
@@ -548,23 +777,32 @@ async function ghGet(token) {
 
 async function ghPut(token, content) {
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2))));
-  const body = {
-    message: `記録更新 ${todayStr()}`,
-    content: encoded,
-    ...(ghFileSha && { sha: ghFileSha })
-  };
+  const body = { message: `記録更新 ${todayStr()}`, content: encoded, ...(ghFileSha && { sha: ghFileSha }) };
   const res = await fetch(`${GH_API}/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`, {
     method: 'PUT',
-    headers: {
-      'Authorization': `token ${token}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/vnd.github.v3+json'
-    },
+    headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
     body: JSON.stringify(body)
   });
   if (!res.ok) { const e = await res.json(); throw new Error(e.message || res.status); }
   const result = await res.json();
   ghFileSha = result.content.sha;
+}
+
+async function ghPutFile(token, path, base64Content) {
+  // Check if file already exists to get SHA
+  let sha;
+  const checkRes = await fetch(`${GH_API}/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`, {
+    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+  });
+  if (checkRes.ok) { const d = await checkRes.json(); sha = d.sha; }
+
+  const body = { message: `画像を追加 ${path}`, content: base64Content, ...(sha && { sha }) };
+  const res = await fetch(`${GH_API}/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`, {
+    method: 'PUT',
+    headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.message || res.status); }
 }
 
 function mergeRecords(local, remote) {
@@ -601,7 +839,7 @@ async function pullFromGitHub() {
       note.className = 'sync-note ok';
       renderHistory();
     } else {
-      note.textContent = 'GitHubにデータがありません（初回は記録してから同期してください）';
+      note.textContent = 'GitHubにデータがありません';
     }
   } catch(e) {
     note.textContent = '同期失敗: ' + e.message;
@@ -622,7 +860,6 @@ async function connectGitHub() {
     if (!res.ok) throw new Error('認証失敗 (status ' + res.status + ')');
     localStorage.setItem('gh_token', token);
     status.textContent = '接続成功！'; status.className = 'sync-note ok';
-    // Pull latest data
     const remote = await ghGet(token);
     if (remote) { records = mergeRecords(records, remote); saveLocal(); checkTodayRecord(); }
   } catch(e) {
@@ -658,12 +895,17 @@ function renderHistory() {
     const d = new Date(r.date + 'T12:00:00');
     const dateStr = `${d.getMonth()+1}月${d.getDate()}日（${WEEKDAYS[d.getDay()]}）`;
     const preview = (r.activities||[]).join('・') || r.notes || '記録あり';
+    const imgs = (r.images || []).filter(s => !s.startsWith('data:') || s.length < 200000);
+    const imgHtml = imgs.length ? `<div class="hist-imgs">${
+      imgs.map(src => `<img class="hist-img" src="${escHtml(imgSrc(src))}" loading="lazy" onclick="event.stopPropagation();openImage('${escHtml(imgSrc(src))}')">`).join('')
+    }</div>` : '';
+
     return `<div class="history-item" onclick="toggleDetail(${i})">
       <div class="history-header">
         <div class="history-date">${dateStr}</div>
         <div class="history-mood">${r.mood}<span>/10</span></div>
       </div>
-      <div class="history-preview">${preview.substring(0,40)}${preview.length>40?'…':''}</div>
+      <div class="history-preview">${escHtml(preview.substring(0,40))}${preview.length>40?'…':''}</div>
       <div class="history-detail" id="hd-${i}">
         <div class="detail-row">
           <div class="detail-label">睡眠</div>
@@ -671,16 +913,17 @@ function renderHistory() {
         </div>
         ${(r.activities||[]).length ? `<div class="detail-row">
           <div class="detail-label">やったこと</div>
-          <div>${r.activities.join('、')}</div>
+          <div>${escHtml(r.activities.join('、'))}</div>
         </div>` : ''}
         ${r.notes ? `<div class="detail-row">
           <div class="detail-label">メモ</div>
-          <div>${r.notes}</div>
+          <div>${escHtml(r.notes)}</div>
         </div>` : ''}
         ${r.concerns ? `<div class="detail-row">
           <div class="detail-label">気になること</div>
-          <div>${r.concerns}</div>
+          <div>${escHtml(r.concerns)}</div>
         </div>` : ''}
+        ${imgHtml}
       </div>
     </div>`;
   }).join('');
@@ -692,7 +935,11 @@ function toggleDetail(i) {
 
 // ===== Export =====
 function exportJSON() {
-  const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' });
+  const exportData = records.map(r => ({
+    ...r,
+    images: (r.images || []).map(src => src.startsWith('data:') ? '(ローカル画像)' : RAW_BASE + src)
+  }));
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `mental-records-${todayStr()}.json`;
@@ -705,7 +952,6 @@ function checkNotifBanner() {
     document.getElementById('notif-banner').classList.add('visible');
   }
 }
-
 async function requestNotifPermission() {
   const r = await Notification.requestPermission();
   if (r === 'granted') {
@@ -714,17 +960,14 @@ async function requestNotifPermission() {
     showStatus('通知を有効にしました', 'success');
   }
 }
-
 function initNotifTime() {
   const t = localStorage.getItem('notif_time');
   if (t) document.getElementById('notif-time').value = t;
 }
-
 function saveNotifTime() {
   localStorage.setItem('notif_time', document.getElementById('notif-time').value);
   scheduleDailyNotif();
 }
-
 function scheduleDailyNotif() {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const [h, m] = (localStorage.getItem('notif_time') || '22:00').split(':').map(Number);
@@ -737,11 +980,15 @@ function scheduleDailyNotif() {
     scheduleDailyNotif();
   }, next - now);
 }
-
 function testNotif() {
   if (!('Notification' in window)) { alert('このブラウザは通知に対応していません'); return; }
   if (Notification.permission !== 'granted') { requestNotifPermission(); return; }
   new Notification('こころの記録', { body: 'テスト通知です。正常に動作しています', icon: 'icon.svg' });
+}
+
+// ===== Utils =====
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 </body>
